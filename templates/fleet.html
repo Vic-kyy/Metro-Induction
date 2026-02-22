@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kochi Metro Fleet Management</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚇</text></svg>">
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      margin: 0; 
+      font-family: 'Inter', sans-serif; 
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #4f46e5 100%); 
+      color: #fff; 
+      min-height: 100vh;
+      animation: gradientShift 10s ease-in-out infinite alternate;
+    }
+    
+    @keyframes gradientShift {
+      0% { background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #4f46e5 100%); }
+      100% { background: linear-gradient(135deg, #1e3a8a 0%, #4f46e5 40%, #7c3aed 100%); }
+    }
+    
+    .container {
+      padding: 20px; 
+      max-width: 1400px; 
+      margin: auto;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin: 0;
+      background: linear-gradient(45deg, #fff, #e2e8f0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .header p {
+      margin: 10px 0 0 0;
+      color: #cbd5e1;
+      font-size: 1.1rem;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 25px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    
+    .refresh-btn {
+      background: linear-gradient(45deg, #3B82F6, #2563EB);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    .refresh-btn:hover {
+      background: linear-gradient(45deg, #2563EB, #1d4ed8);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    }
+    
+    .refresh-btn:active {
+      transform: translateY(0);
+    }
+    
+    .refresh-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .loading {
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10B981;
+      animation: pulse 2s infinite;
+    }
+    
+    .status-dot.offline {
+      background: #EF4444;
+      animation: none;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .cards {
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+      gap: 20px; 
+      margin-bottom: 30px;
+    }
+    
+    .card {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transform: translateX(-100%);
+      animation: shimmer 2s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    
+    .card:hover {
+      transform: translateY(-4px);
+      background: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    
+    .card .number {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(45deg, #fff, #e2e8f0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .card .label {
+      font-size: 1rem;
+      font-weight: 500;
+      opacity: 0.9;
+    }
+    
+    .green { color: #10B981; }
+    .red { color: #EF4444; }
+    .yellow { color: #FBBF24; }
+    .blue { color: #3B82F6; }
+    
+    .table-container {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    th, td {
+      padding: 16px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    th {
+      background: rgba(255, 255, 255, 0.05);
+      color: #cbd5e1;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    tbody tr {
+      transition: all 0.3s ease;
+    }
+    
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: scale(1.01);
+    }
+    
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .status {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .status::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    
+    .status.active {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10B981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    
+    .status.maintenance {
+      background: rgba(239, 68, 68, 0.2);
+      color: #EF4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    .status.alert {
+      background: rgba(251, 191, 36, 0.2);
+      color: #FBBF24;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+    
+    .health {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    
+    .health.green { color: #10B981; }
+    .health.yellow { color: #FBBF24; }
+    .health.red { color: #EF4444; }
+    
+    .error {
+      color: #EF4444;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 16px;
+      border-radius: 12px;
+      margin: 15px 0;
+      backdrop-filter: blur(10px);
+    }
+    
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s linear infinite;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #cbd5e1;
+    }
+    
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+    
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 2rem;
+      }
+      
+      .cards {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+      }
+      
+      .card {
+        padding: 20px;
+      }
+      
+      .card .number {
+        font-size: 2rem;
+      }
+      
+      th, td {
+        padding: 12px 8px;
+        font-size: 0.9rem;
+      }
+      
+      .controls {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  
+    
+    <div class="controls">
+      <button class="refresh-btn" onclick="loadFleet()">
+        <span id="refreshIcon">🔄</span>
+        <span id="refreshText">Refresh Data</span>
+      </button>
+      <div class="status-indicator">
+        <div class="status-dot" id="apiStatusDot"></div>
+        <span id="lastUpdated">Connecting to API...</span>
+      </div>
+    </div>
+    
+    <div id="errorMessage" class="error" style="display:none;"></div>
+    
+    <div class="cards">
+      <div class="card">
+        <div class="number green" id="activeCount">0</div>
+        <div class="label">Active Trains</div>
+      </div>
+      <div class="card">
+        <div class="number red" id="maintenanceCount">0</div>
+        <div class="label">In Maintenance</div>
+      </div>
+      <div class="card">
+        <div class="number yellow" id="alertCount">0</div>
+        <div class="label">Alerts</div>
+      </div>
+      <div class="card">
+        <div class="number blue" id="avgHealth">0%</div>
+        <div class="label">Average Health</div>
+      </div>
+    </div>
+    
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Train ID</th>
+            <th>Status</th>
+            <th>Health Score</th>
+            <th>Mileage</th>
+            <th>Next Maintenance</th>
+          </tr>
+        </thead>
+        <tbody id="fleetTable">
+          <tr>
+            <td colspan="5" class="empty-state">
+              <div class="empty-state-icon">🔄</div>
+              <div>Loading fleet data...</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+  // API Configuration - uses localhost:5001 for the Flask backend
+  const API_BASE_URL = 'http://localhost:5011';
+  
+  let isLoading = false;
+  let lastUpdateTime = null;
+
+  function setApiStatus(connected) {
+    const dot = document.getElementById('apiStatusDot');
+    if (connected) {
+      dot.classList.remove('offline');
+    } else {
+      dot.classList.add('offline');
+    }
+  }
+
+  function updateLoadingState(loading) {
+    isLoading = loading;
+    const refreshBtn = document.querySelector('.refresh-btn');
+    const refreshIcon = document.getElementById('refreshIcon');
+    const refreshText = document.getElementById('refreshText');
+    
+    if (loading) {
+      refreshBtn.disabled = true;
+      refreshIcon.innerHTML = '<div class="loading-spinner"></div>';
+      refreshText.textContent = 'Loading...';
+      refreshBtn.style.opacity = '0.7';
+    } else {
+      refreshBtn.disabled = false;
+      refreshIcon.textContent = '🔄';
+      refreshText.textContent = 'Refresh Data';
+      refreshBtn.style.opacity = '1';
+    }
+  }
+
+  function updateLastUpdated() {
+    const now = new Date();
+    lastUpdateTime = now;
+    document.getElementById('lastUpdated').textContent = 
+      `Last updated: ${now.toLocaleTimeString()}`;
+  }
+
+  async function loadFleet() {
+    if (isLoading) return;
+    
+    try {
+      updateLoadingState(true);
+      document.getElementById('errorMessage').style.display = 'none';
+      
+      console.log(`Fetching from: ${API_BASE_URL}/api/fleet`);
+      const response = await fetch(`${API_BASE_URL}/api/fleet`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      console.log("✅ Loaded fleet data:", data);
+      setApiStatus(true);
+      
+      // Update summary cards with animations
+      const activeCount = data.filter(t => t.status === 'Active').length;
+      const maintenanceCount = data.filter(t => t.status === 'Maintenance').length;
+      const alertCount = data.filter(t => t.status === 'Alert').length;
+      const avgHealth = Math.round(data.reduce((acc, t) => acc + t.health, 0) / data.length);
+      
+      animateCounter('activeCount', activeCount);
+      animateCounter('maintenanceCount', maintenanceCount);
+      animateCounter('alertCount', alertCount);
+      animateCounter('avgHealth', avgHealth, '%');
+      
+      // Update table
+      const tbody = document.getElementById('fleetTable');
+      tbody.innerHTML = '';
+
+      const getHealthColor = health => {
+        if (health >= 80) return 'green';
+        if (health >= 60) return 'yellow';
+        return 'red';
+      };
+
+      const getStatusClass = status => {
+        switch(status.toLowerCase()) {
+          case 'active': return 'active';
+          case 'maintenance': return 'maintenance';
+          case 'alert': return 'alert';
+          default: return 'active';
+        }
+      };
+
+      data.forEach((train, index) => {
+        const tr = document.createElement('tr');
+        tr.style.animationDelay = `${index * 50}ms`;
+        tr.innerHTML = `
+          <td><strong>${train.id}</strong></td>
+          <td><span class="status ${getStatusClass(train.status)}">${train.status}</span></td>
+          <td><span class="health ${getHealthColor(train.health)}">${train.health}%</span></td>
+          <td>${train.mileage ? train.mileage.toLocaleString() + ' km' : 'N/A'}</td>
+          <td>${train.nextMaintenance || 'N/A'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      updateLastUpdated();
+
+    } catch(error) { 
+      console.error('❌ Error loading fleet data:', error);
+      setApiStatus(false);
+      
+      const errorDiv = document.getElementById('errorMessage');
+      errorDiv.innerHTML = `
+        <strong>⚠️ Error loading fleet data:</strong><br>
+        ${error.message}<br>
+        <small>Make sure Flask server is running on port 5001. Retrying in 30 seconds...</small>
+      `;
+      errorDiv.style.display = 'block';
+      
+      // Show error state in table
+      const tbody = document.getElementById('fleetTable');
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="empty-state">
+            <div class="empty-state-icon">⚠️</div>
+            <div>Failed to connect to API. Please ensure Flask server is running.</div>
+          </td>
+        </tr>
+      `;
+    } finally {
+      updateLoadingState(false);
+    }
+  }
+
+  function animateCounter(elementId, targetValue, suffix = '') {
+    const element = document.getElementById(elementId);
+    const startValue = parseInt(element.textContent) || 0;
+    const duration = 1000;
+    const startTime = performance.now();
+    
+    function updateCounter(currentTime) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Easing function for smooth animation
+      const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+      const currentValue = Math.round(startValue + (targetValue - startValue) * easeOutCubic);
+      
+      element.textContent = currentValue + suffix;
+      
+      if (progress < 1) {
+        requestAnimationFrame(updateCounter);
+      }
+    }
+    
+    requestAnimationFrame(updateCounter);
+  }
+  
+  // Load data on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 Kochi Metro Fleet Management System Started');
+    console.log(`API URL: ${API_BASE_URL}`);
+    loadFleet();
+  });
+  
+  // Auto-refresh every 30 seconds
+  setInterval(() => {
+    if (!isLoading) {
+      console.log('🔄 Auto-refreshing data...');
+      loadFleet();
+    }
+  }, 30000);
+
+  // Add keyboard shortcut for refresh
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey && e.key === 'r') || e.key === 'F5') {
+      e.preventDefault();
+      loadFleet();
+    }
+  });
+
+  // Add visibility change handler
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && lastUpdateTime) {
+      const timeSinceUpdate = Date.now() - lastUpdateTime.getTime();
+      if (timeSinceUpdate > 120000 && !isLoading) {
+        console.log('🔄 Refreshing due to tab becoming visible...');
+        loadFleet();
+      }
+    }
+  });
+  </script>
+</body>
+</html>

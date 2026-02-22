@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kochi Metro - Customer Feedback Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #60A5FA;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .star-filled { color: #FBBF24; }
+        .star-empty { color: #4B5563; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 min-h-screen">
+    <div class="p-6">
+        <div class="max-w-7xl mx-auto">
+            
+
+            <!-- Main Content Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Feedback Overview -->
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+                    <div class="flex items-center space-x-2 mb-4">
+                        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                        <h2 class="text-xl font-semibold text-white">Feedback Overview</h2>
+                    </div>
+                    <div id="feedbackOverview">
+                        <div class="flex justify-center items-center py-8">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Feedback -->
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+                    <h2 class="text-xl font-semibold text-white mb-4">Recent Feedback</h2>
+                    <div id="recentFeedback">
+                        <div class="flex justify-center items-center py-8">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Feedback Analytics -->
+                    <div class="mt-6">
+                        <h3 class="text-lg font-semibold text-white mb-3">Feedback Analytics</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-white/5 rounded-xl p-3">
+                                <div id="overallRating" class="text-xl font-bold text-white">--</div>
+                                <div class="text-gray-300 text-sm">Overall Rating</div>
+                            </div>
+                            <div class="bg-white/5 rounded-xl p-3">
+                                <div id="satisfaction" class="text-xl font-bold text-white">--%</div>
+                                <div class="text-gray-300 text-sm">Satisfaction</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const FEEDBACK_API_URL = 'http://localhost:5011/api/feedback';
+        
+        // Mock data as fallback
+        const mockFeedbackData = {
+            summary: [
+                { source: 'Mobile App', rating: 4.5, count: 1250, trend: '+5%' },
+                { source: 'Station Kiosks', rating: 4.2, count: 890, trend: '+3%' },
+                { source: 'Website', rating: 4.3, count: 670, trend: '-2%' },
+                { source: 'Customer Service', rating: 4.7, count: 450, trend: '+8%' }
+            ],
+            recent_feedback: [
+                { source: 'Mobile App', comment: 'Great experience, trains are always on time!', rating: 5, time_ago: '2 hours ago' },
+                { source: 'Station Kiosk', comment: 'Clean stations and helpful staff.', rating: 4, time_ago: '5 hours ago' },
+                { source: 'Website', comment: 'Easy ticket booking process.', rating: 4, time_ago: '1 day ago' },
+                { source: 'Customer Service', comment: 'Quick response to my query.', rating: 5, time_ago: '2 days ago' }
+            ],
+            overall_rating: 4.4,
+            satisfaction: 88
+        };
+
+        function renderStars(rating) {
+            const fullStars = Math.floor(rating);
+            let starsHTML = '';
+            for (let i = 0; i < 5; i++) {
+                starsHTML += i < fullStars ? '★' : '☆';
+            }
+            return starsHTML;
+        }
+
+        function renderFeedbackOverview(data) {
+            const container = document.getElementById('feedbackOverview');
+            container.innerHTML = data.summary.map(feedback => `
+                <div class="bg-white/5 rounded-xl p-4 border border-white/10 mb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-white font-medium">${feedback.source}</span>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex text-yellow-400">
+                                ${renderStars(feedback.rating)}
+                            </div>
+                            <span class="text-white">${feedback.rating}</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-300">${feedback.count} responses</span>
+                        <span class="${feedback.trend.startsWith('+') ? 'text-green-400' : 'text-red-400'}">
+                            ${feedback.trend}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderRecentFeedback(data) {
+            const container = document.getElementById('recentFeedback');
+            container.innerHTML = data.recent_feedback.map(item => `
+                <div class="bg-white/5 rounded-xl p-4 mb-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-blue-400 font-medium">${item.source}</span>
+                        <span class="text-xs text-gray-400">${item.time_ago}</span>
+                    </div>
+                    <p class="text-gray-300 text-sm">"${item.comment}"</p>
+                    <div class="flex text-yellow-400 text-sm mt-2">
+                        ${renderStars(item.rating)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateAnalytics(data) {
+            document.getElementById('overallRating').textContent = data.overall_rating.toFixed(1);
+            document.getElementById('satisfaction').textContent = data.satisfaction + '%';
+        }
+
+        async function fetchFeedbackData() {
+            try {
+                const response = await fetch(FEEDBACK_API_URL);
+                if (response.ok) {
+                    const data = await response.json();
+                    renderFeedbackOverview(data);
+                    renderRecentFeedback(data);
+                    updateAnalytics(data);
+                } else {
+                    console.error('Failed to fetch feedback data, using mock data');
+                    renderFeedbackOverview(mockFeedbackData);
+                    renderRecentFeedback(mockFeedbackData);
+                    updateAnalytics(mockFeedbackData);
+                }
+            } catch (error) {
+                console.error('Error fetching feedback data:', error);
+                renderFeedbackOverview(mockFeedbackData);
+                renderRecentFeedback(mockFeedbackData);
+                updateAnalytics(mockFeedbackData);
+            }
+        }
+
+        // Load data on page load
+        fetchFeedbackData();
+
+        // Refresh data every 30 seconds
+        setInterval(fetchFeedbackData, 30000);
+    </script>
+</body>
+</html>

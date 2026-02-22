@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KMRL Induction Planning Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .pulse-animate {
+            animation: pulse-dot 2s infinite;
+        }
+
+        /* Custom scrollbar */
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 text-white">
+
+    <div class="container mx-auto px-4 py-4 max-w-[1920px]">
+
+        <!-- Controls -->
+        <div class="flex flex-wrap items-center gap-4 mb-6">
+            <button onclick="loadInductionPlan()"
+                class="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                id="refreshBtn">
+                <span id="refreshText">Refresh Plan</span>
+            </button>
+
+            <button onclick="exportToExcel()"
+                class="px-6 py-2.5 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg"
+                id="exportBtn">
+                Export to Excel
+            </button>
+
+            <div class="flex items-center space-x-2 ml-auto">
+                <div id="apiStatusDot" class="w-3 h-3 rounded-full bg-red-400"></div>
+                <span id="lastUpdated" class="text-sm text-blue-200">Connecting to API...</span>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="hidden mb-6 glass rounded-xl p-4 border-l-4 border-red-500">
+            <div class="text-red-300"></div>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+            <!-- Left Column - Insights -->
+            <div class="lg:col-span-3 glass rounded-2xl p-5 flex flex-col max-h-[calc(100vh-140px)]">
+                <h2 class="text-xl font-semibold mb-4">Operational Insights</h2>
+                <div class="overflow-y-auto flex-1 space-y-3 custom-scroll" id="insightsPanel">
+                    <div class="flex justify-center items-center py-8">
+                        <div class="w-8 h-8 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Column - Train Allocations -->
+            <div class="lg:col-span-6 glass rounded-2xl p-5 flex flex-col max-h-[calc(100vh-140px)]">
+                <h2 class="text-xl font-semibold mb-4">Train Induction Plan</h2>
+
+                <!-- Filter Tabs -->
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button
+                        class="filter-tab px-4 py-2 rounded-full text-sm font-semibold transition-all bg-blue-500/20 text-blue-200"
+                        data-filter="all">
+                        All Trains
+                    </button>
+                    <button
+                        class="filter-tab px-4 py-2 rounded-full text-sm font-semibold transition-all bg-white/5 hover:bg-white/10"
+                        data-filter="Revenue Service">
+                        Revenue Service
+                    </button>
+                    <button
+                        class="filter-tab px-4 py-2 rounded-full text-sm font-semibold transition-all bg-white/5 hover:bg-white/10"
+                        data-filter="Standby">
+                        Standby
+                    </button>
+                    <button
+                        class="filter-tab px-4 py-2 rounded-full text-sm font-semibold transition-all bg-white/5 hover:bg-white/10"
+                        data-filter="IBL Maintenance">
+                        Maintenance
+                    </button>
+                </div>
+
+                <div class="overflow-y-auto flex-1 space-y-3 custom-scroll" id="trainList">
+                    <div class="flex justify-center items-center py-8">
+                        <div class="w-8 h-8 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Depot Status -->
+            <div class="lg:col-span-3 flex flex-col gap-4 max-h-[calc(100vh-140px)]">
+                <!-- Maintenance Bays -->
+                <div class="glass rounded-2xl p-5 flex flex-col flex-1 min-h-0">
+                    <h2 class="text-lg font-semibold mb-3">Maintenance Bays</h2>
+                    <div class="overflow-y-auto flex-1 space-y-2 pr-2 custom-scroll" id="bayGrid">
+                        <div class="flex justify-center items-center py-4">
+                            <div class="w-8 h-8 border-3 border-white/30 border-t-white rounded-full animate-spin">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stabling Tracks -->
+                <div class="glass rounded-2xl p-5 flex flex-col flex-1 min-h-0">
+                    <h2 class="text-lg font-semibold mb-3">Stabling Tracks</h2>
+                    <div class="overflow-y-auto flex-1 space-y-2 pr-2 custom-scroll" id="trackGrid">
+                        <div class="flex justify-center items-center py-4">
+                            <div class="w-8 h-8 border-3 border-white/30 border-t-white rounded-full animate-spin">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:5011/api/induction";
+
+        let currentPlan = null;
+        let currentFilter = 'all';
+        let isLoading = false;
+
+        function setApiStatus(connected) {
+            const dot = document.getElementById('apiStatusDot');
+            if (connected) {
+                dot.className = 'w-3 h-3 rounded-full bg-green-400 pulse-animate';
+            } else {
+                dot.className = 'w-3 h-3 rounded-full bg-red-400';
+            }
+        }
+
+        function updateLastUpdated() {
+            const now = new Date();
+            document.getElementById('lastUpdated').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+        }
+
+        async function loadInductionPlan() {
+            if (isLoading) return;
+
+            try {
+                isLoading = true;
+                document.getElementById('errorMessage').classList.add('hidden');
+                document.getElementById('refreshText').textContent = 'Loading...';
+                document.getElementById('refreshBtn').disabled = true;
+
+                const response = await fetch(`${API_BASE}/master-plan`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                currentPlan = data;
+
+                setApiStatus(true);
+                renderTrainAllocations(data.train_allocations);
+                renderInsights(data.operational_insights);
+                renderDepotStatus(data.depot_status);
+                updateLastUpdated();
+
+            } catch (error) {
+                console.error('Error loading induction plan:', error);
+                setApiStatus(false);
+
+                const errorDiv = document.getElementById('errorMessage');
+                errorDiv.querySelector('div').innerHTML = `
+                    <strong>Error loading induction plan:</strong><br>
+                    ${error.message}<br>
+                    <small>Make sure Flask server is running on port 5011</small>
+                `;
+                errorDiv.classList.remove('hidden');
+            } finally {
+                isLoading = false;
+                document.getElementById('refreshText').textContent = 'Refresh Plan';
+                document.getElementById('refreshBtn').disabled = false;
+            }
+        }
+
+        function exportToExcel() {
+            if (!currentPlan || !currentPlan.train_allocations) {
+                alert('No data available to export. Please load the plan first.');
+                return;
+            }
+
+            try {
+                const data = currentPlan.train_allocations.map(train => ({
+                    'Train Number': train.train_number,
+                    'Category': train.category,
+                    'Status': train.status || train.category,
+                    'Rank': train.rank,
+                    'Readiness Score': train.readiness_score?.toFixed(2) || '0.00',
+                    'Location': train.location || 'TBD',
+                    'Bay Assignment': train.bay_assignment || '-',
+                    'Track Position': train.track_position || '-',
+                    'Maintenance Type': train.maintenance_type || '-',
+                    'Estimated Completion': train.estimated_completion || 'N/A',
+                    'Key Issues': (train.explanation || []).join('; ')
+                }));
+
+                const headers = Object.keys(data[0]);
+                const csvContent = [
+                    headers.join(','),
+                    ...data.map(row =>
+                        headers.map(header => {
+                            const value = row[header];
+                            return typeof value === 'string' && (value.includes(',') || value.includes('"'))
+                                ? `"${value.replace(/"/g, '""')}"`
+                                : value;
+                        }).join(',')
+                    )
+                ].join('\n');
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `KMRL_Induction_Plan_${new Date().toISOString().split('T')[0]}.csv`;
+                link.click();
+            } catch (error) {
+                console.error('Export error:', error);
+                alert('Error exporting data. Please try again.');
+            }
+        }
+
+        function renderTrainAllocations(allocations) {
+            if (!allocations || allocations.length === 0) {
+                document.getElementById('trainList').innerHTML = '<div class="text-center text-gray-400 py-8">No train allocations available</div>';
+                return;
+            }
+
+            let filteredAllocations = allocations;
+            if (currentFilter !== 'all') {
+                filteredAllocations = allocations.filter(train => train.category === currentFilter);
+            }
+
+            filteredAllocations.sort((a, b) => a.rank - b.rank);
+
+            const html = filteredAllocations.map(train => {
+                const statusColors = {
+                    'Revenue Service': 'bg-green-500/20 text-green-400',
+                    'Standby': 'bg-yellow-500/20 text-yellow-400',
+                    'IBL Maintenance': 'bg-red-500/20 text-red-400'
+                };
+                const statusClass = statusColors[train.category] || 'bg-gray-500/20 text-gray-400';
+                const explanations = (train.explanation || []).slice(0, 3);
+
+                return `
+                    <div class="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-all cursor-pointer">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 class="text-lg font-bold">${train.train_number}</h3>
+                                <p class="text-sm text-gray-400">Rank #${train.rank} - ${train.category}</p>
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-xs font-bold ${statusClass}">
+                                ${train.status || train.category}
+                            </span>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-2 mb-3">
+                            <div class="bg-white/5 rounded-lg p-2 text-center">
+                                <div class="text-sm font-bold text-blue-400">${train.readiness_score?.toFixed(1) || '0.0'}</div>
+                                <div class="text-xs text-gray-400">Readiness</div>
+                            </div>
+                            <div class="bg-white/5 rounded-lg p-2 text-center">
+                                <div class="text-sm font-bold text-blue-400">${train.location || 'TBD'}</div>
+                                <div class="text-xs text-gray-400">Location</div>
+                            </div>
+                            <div class="bg-white/5 rounded-lg p-2 text-center">
+                                <div class="text-sm font-bold text-blue-400">${train.bay_assignment || train.track_position || '-'}</div>
+                                <div class="text-xs text-gray-400">Assignment</div>
+                            </div>
+                        </div>
+                        
+                        ${explanations.length > 0 ? `
+                            <div class="text-xs text-gray-300 space-y-1">
+                                ${explanations.map(exp => `<div>• ${exp}</div>`).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('trainList').innerHTML = html || '<div class="text-center text-gray-400 py-8">No trains match the selected filter</div>';
+        }
+
+        function renderInsights(insights) {
+            if (!insights || insights.length === 0) {
+                document.getElementById('insightsPanel').innerHTML = '<div class="text-center text-gray-400 py-8">All systems operational</div>';
+                return;
+            }
+
+            const typeColors = {
+                'warning': 'border-l-yellow-500 bg-yellow-500/5',
+                'info': 'border-l-blue-500 bg-blue-500/5',
+                'critical': 'border-l-red-500 bg-red-500/5'
+            };
+
+            const html = insights.map(insight => {
+                const colorClass = typeColors[insight.type] || typeColors.info;
+                return `
+                    <div class="border-l-4 ${colorClass} rounded-lg p-3">
+                        <div class="font-semibold text-sm mb-2">${insight.message}</div>
+                        <div class="text-xs text-gray-300">${insight.recommendation}</div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('insightsPanel').innerHTML = html;
+        }
+
+        function renderDepotStatus(depotStatus) {
+            if (!depotStatus) return;
+
+            const bayHTML = (depotStatus.maintenance_bays || []).map(bay => {
+                const isAvailable = bay.status === 'Available';
+                const borderColor = isAvailable ? 'border-l-green-500' : 'border-l-blue-500';
+                return `
+                    <div class="bg-white/5 border-l-4 ${borderColor} rounded-lg p-3">
+                        <div class="font-bold text-sm">${bay.bay_id}</div>
+                        <div class="text-xs text-gray-400 mt-1">
+                            ${bay.bay_type}<br>
+                            ${bay.train_number ? `Train: ${bay.train_number}` : 'Available'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('bayGrid').innerHTML = bayHTML;
+
+            const trackHTML = (depotStatus.stabling_tracks || []).map(track => {
+                const isAvailable = track.status === 'Available';
+                const borderColor = isAvailable ? 'border-l-green-500' : 'border-l-blue-500';
+                return `
+                    <div class="bg-white/5 border-l-4 ${borderColor} rounded-lg p-3">
+                        <div class="font-bold text-sm">${track.track_id}</div>
+                        <div class="text-xs text-gray-400 mt-1">
+                            ${track.train_number ? `Train: ${track.train_number}` : 'Available'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('trackGrid').innerHTML = trackHTML;
+        }
+
+        // Filter tabs
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+            tab.addEventListener('click', function () {
+                document.querySelectorAll('.filter-tab').forEach(t => {
+                    t.classList.remove('bg-blue-500/20', 'text-blue-200');
+                    t.classList.add('bg-white/5');
+                });
+                this.classList.remove('bg-white/5');
+                this.classList.add('bg-blue-500/20', 'text-blue-200');
+                currentFilter = this.dataset.filter;
+                if (currentPlan) {
+                    renderTrainAllocations(currentPlan.train_allocations);
+                }
+            });
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadInductionPlan();
+        });
+
+        // Auto-refresh every 2 minutes
+        setInterval(() => {
+            if (!isLoading) {
+                loadInductionPlan();
+            }
+        }, 120000);
+    </script>
+</body>
+
+</html>

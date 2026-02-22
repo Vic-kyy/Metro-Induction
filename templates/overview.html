@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kochi Metro Command Center – Integrated</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js for charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Lucide icons CDN -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/lucide@0.259.0/dist/esm/lucide.js"></script>
+  <style>
+    body { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+    .glass { background: rgba(255,255,255,0.04); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.08); }
+    .chart-container { width:100%; height:220px; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 text-white">
+
+  <div class="container mx-auto px-4 py-4 max-w-[1920px]">
+    <!-- Header -->
+    <header class="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div class="flex items-center space-x-4">
+        <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+          <i data-lucide="train" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold">Kochi Metro Command Center</h1>
+          <p class="text-blue-200 text-sm">Intelligent Train Induction Planning System</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4 md:gap-6">
+        <div class="text-right">
+          <div id="timeClock" class="text-white text-lg font-semibold">--:--:--</div>
+          <div id="dateLabel" class="text-blue-200 text-sm">---</div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <i data-lucide="bell" class="w-5 h-5 text-yellow-400"></i>
+          <span id="alertsCount" class="text-white font-medium">0 Alerts</span>
+        </div>
+
+        <div id="apiStatus" class="flex items-center space-x-2 px-3 py-1 rounded-full bg-red-500/20">
+          <div id="apiDot" class="w-3 h-3 rounded-full bg-red-400"></div>
+          <span id="apiText" class="text-xs text-red-400">Connecting...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Tabs -->
+    <nav class="flex space-x-2 mb-6 overflow-x-auto pb-2">
+      <button data-tab="overview" class="tab-btn px-4 py-2 rounded-lg bg-blue-500/20 text-blue-200 whitespace-nowrap">Overview</button>
+      <button data-tab="fleet" class="tab-btn px-4 py-2 rounded-lg bg-white/5 whitespace-nowrap">Fleet Management</button>
+      <button data-tab="maintenance" class="tab-btn px-4 py-2 rounded-lg bg-white/5 whitespace-nowrap">Maintenance</button>
+      <button data-tab="cleaning" class="tab-btn px-4 py-2 rounded-lg bg-white/5 whitespace-nowrap">Cleaning</button>
+      <button data-tab="induction" class="tab-btn px-4 py-2 rounded-lg bg-white/5 whitespace-nowrap">Warehouse Induction</button>
+      <button data-tab="scenarios" class="tab-btn px-4 py-2 rounded-lg bg-white/5 whitespace-nowrap">What-If Analysis</button>
+      <button data-tab="feedback" class="tab-btn px-4 py-2 rounded-lg bg-white/5 whitespace-nowrap">Feedback</button>
+    </nav>
+
+    <!-- Main content -->
+    <main id="mainContent">
+
+      <!-- Overview -->
+      <section id="overview" class="tab-content">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <!-- Left Column -->
+          <div class="lg:col-span-3 flex flex-col gap-4">
+            <!-- Fleet Status -->
+            <div class="glass rounded-2xl p-5 flex-1">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold">Fleet Status</h2>
+                <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              </div>
+
+              <div id="fleetList" class="space-y-2 max-h-[280px] overflow-y-auto mb-4">
+                <div class="text-gray-400 text-sm text-center py-4">Loading fleet data...</div>
+              </div>
+
+              <div class="pt-4 border-t border-white/10 text-sm text-gray-300 space-y-1">
+                <div class="flex justify-between">
+                  <span>Active:</span>
+                  <span id="statActive" class="font-semibold">0</span>
+                </div>
+                <div class="flex justify-between text-yellow-400">
+                  <span>Alerts:</span>
+                  <span id="statAlerts" class="font-semibold">0</span>
+                </div>
+                <div class="flex justify-between text-red-400">
+                  <span>Maintenance:</span>
+                  <span id="statMaint" class="font-semibold">0</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Induction Score -->
+            <div class="glass rounded-2xl p-5">
+              <div class="flex items-center space-x-2 mb-4">
+                <i data-lucide="zap" class="w-5 h-5 text-purple-400"></i>
+                <h2 class="text-lg font-semibold">Induction Score</h2>
+              </div>
+
+              <div class="space-y-3">
+                <div class="bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-lg p-3">
+                  <div class="text-sm text-purple-200 mb-1">Overall Induction Score</div>
+                  <div class="text-2xl font-bold" id="inductionScore">Select Train</div>
+                  <div class="text-xs text-purple-300 mt-1" id="inductionLabel">—</div>
+                </div>
+
+                <div class="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg p-3">
+                  <div class="text-sm text-blue-200 mb-1">AI Recommendation</div>
+                  <div class="text-sm font-medium" id="aiRecommendation">Select a train for recommendation</div>
+                  <div class="text-xs text-blue-300 mt-1">Based on ML Analysis</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Center Column -->
+          <div class="lg:col-span-6 flex flex-col gap-4">
+            <!-- Sensor Analytics -->
+            <div class="glass rounded-2xl p-5">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold">Real-time Sensor Analytics</h2>
+                <div class="text-sm text-gray-300">Live data</div>
+              </div>
+              <div class="chart-container">
+                <canvas id="sensorChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Train Induction Insights -->
+            <div class="glass rounded-2xl p-5 flex-1">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <h2 class="text-xl font-semibold">Train Induction Insights</h2>
+
+                <div class="relative">
+                  <button id="trainDropdownBtn" class="flex items-center space-x-2 bg-white/10 px-3 py-2 rounded-lg hover:bg-white/20 transition-colors">
+                    <span id="selectedTrain">Select Train</span>
+                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                  </button>
+                  <div id="trainDropdown" class="absolute right-0 mt-2 w-40 bg-slate-800/95 rounded-lg shadow-xl hidden max-h-48 overflow-y-auto z-50">
+                  </div>
+                </div>
+              </div>
+
+              <div id="trainMetrics" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="text-gray-400 text-sm text-center col-span-full py-8">Select a train to view insights</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div class="lg:col-span-3 flex flex-col gap-4">
+            <!-- Urgent Maintenance -->
+            <div class="glass rounded-2xl p-5 flex-1">
+              <h2 class="text-lg font-semibold mb-4">Urgent Maintenance</h2>
+              <div id="urgentMaintenance" class="space-y-3">
+                <div class="text-gray-400 text-sm text-center py-2">Loading...</div>
+              </div>
+            </div>
+
+            <!-- Certificate Status -->
+            <div class="glass rounded-2xl p-5">
+              <h2 class="text-lg font-semibold mb-4">Certificate Status</h2>
+              <div class="flex justify-center mb-4">
+                <div class="relative w-24 h-24">
+                  <canvas id="certificateChart" width="96" height="96"></canvas>
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="text-center">
+                      <div class="text-lg font-bold" id="certPercent">--</div>
+                      <div class="text-xs text-gray-300">Valid</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="certLegend" class="space-y-1 text-sm text-gray-300">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Other tabs with iframes -->
+      <section id="fleet" class="tab-content hidden">
+        <iframe src="/fleet" class="w-full h-screen border-0 rounded-lg"></iframe>
+      </section>
+
+      <section id="maintenance" class="tab-content hidden">
+        <iframe src="/maintenance" class="w-full h-screen border-0 rounded-lg"></iframe>
+      </section>
+
+      <section id="induction" class="tab-content hidden">
+        <iframe src="/induction" class="w-full h-screen border-0 rounded-lg"></iframe>
+      </section>
+
+      <section id="cleaning" class="tab-content hidden">
+        <iframe src="/cleaning" class="w-full h-screen border-0 rounded-lg"></iframe>
+      </section>
+
+      <section id="scenarios" class="tab-content hidden">
+        <iframe src="/whatif" class="w-full h-screen border-0 rounded-lg"></iframe>
+      </section>
+
+      <section id="feedback" class="tab-content hidden">
+        <iframe src="/feedback" class="w-full h-screen border-0 rounded-lg"></iframe>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // API Configuration
+    const API_BASE_URL = 'http://localhost:5011';
+    
+    // Global state
+    let trainFleet = [];
+    let sensorChart = null;
+    let certChart = null;
+    let refreshInterval = null;
+
+    // Initialize lucide icons
+    import('https://cdn.jsdelivr.net/npm/lucide@0.259.0/dist/esm/lucide.js').then(({createIcons}) => {
+      createIcons();
+    }).catch(()=>{ /* ignore */ });
+
+    // Utilities
+    function formatDate(date) {
+      return date.toLocaleDateString();
+    }
+    function formatTime(date) {
+      return date.toLocaleTimeString();
+    }
+
+    // Clock
+    const timeClock = document.getElementById('timeClock');
+    const dateLabel = document.getElementById('dateLabel');
+    setInterval(() => {
+      const now = new Date();
+      timeClock.textContent = formatTime(now);
+      dateLabel.textContent = formatDate(now);
+    }, 500);
+
+    // API Status
+    function setApiState(healthy, message = '') {
+      const apiEl = document.getElementById('apiStatus');
+      const dot = document.getElementById('apiDot');
+      const text = document.getElementById('apiText');
+      if (healthy) {
+        apiEl.className = 'flex items-center space-x-2 px-3 py-1 rounded-full bg-green-500/20';
+        dot.className = 'w-3 h-3 rounded-full bg-green-400 animate-pulse';
+        text.textContent = message || 'API Connected';
+        text.className = 'text-xs text-green-400';
+      } else {
+        apiEl.className = 'flex items-center space-x-2 px-3 py-1 rounded-full bg-red-500/20';
+        dot.className = 'w-3 h-3 rounded-full bg-red-400';
+        text.textContent = message || 'API Offline';
+        text.className = 'text-xs text-red-400';
+      }
+    }
+
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.dataset.tab;
+        document.querySelectorAll('.tab-content').forEach(s => s.classList.add('hidden'));
+        document.getElementById(target).classList.remove('hidden');
+
+        document.querySelectorAll('.tab-btn').forEach(b => {
+          b.classList.remove('bg-blue-500/20','text-blue-200');
+          b.classList.add('bg-white/5');
+        });
+        btn.classList.remove('bg-white/5');
+        btn.classList.add('bg-blue-500/20','text-blue-200');
+      });
+    });
+
+    // API Functions
+    async function fetchFleetData() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/fleet`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const data = await response.json();
+        trainFleet = data;
+        
+        setApiState(true, 'API Connected');
+        renderFleetList();
+        updateAlertCount();
+        updateTrainDropdown();
+        
+        return data;
+      } catch (error) {
+        console.error('Failed to fetch fleet data:', error);
+        setApiState(false, 'API Offline');
+        return null;
+      }
+    }
+
+    async function checkApiHealth() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/health`);
+        const data = await response.json();
+        console.log('API Health:', data);
+        setApiState(data.status === 'healthy', `${data.trains_in_db} trains loaded`);
+      } catch (error) {
+        setApiState(false, 'Cannot reach API');
+      }
+    }
+
+    // Render Functions
+    function renderFleetList() {
+      const el = document.getElementById('fleetList');
+      if (!trainFleet || trainFleet.length === 0) {
+        el.innerHTML = '<div class="text-gray-400 text-sm text-center py-4">No data available</div>';
+        return;
+      }
+
+      el.innerHTML = '';
+      trainFleet.slice(0, 10).forEach(t => {
+        const item = document.createElement('div');
+        item.className = "p-2 rounded-lg bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors";
+        item.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <div class="w-2 h-2 rounded-full ${
+                t.status === 'Active' ? 'bg-green-400' : 
+                t.status === 'Maintenance' ? 'bg-red-400' : 
+                'bg-yellow-400'
+              }"></div>
+              <span class="text-white text-sm">${t.id}</span>
+            </div>
+            <span class="text-xs ${
+              t.health >= 80 ? 'text-green-500' : 
+              t.health >= 60 ? 'text-yellow-500' : 
+              'text-red-500'
+            }">${t.health}%</span>
+          </div>
+          <div class="text-xs text-gray-400 mt-1">${t.status}</div>
+        `;
+        item.addEventListener('click', () => {
+          document.getElementById('selectedTrain').textContent = t.id;
+          document.getElementById('trainDropdown').classList.add('hidden');
+          showTrainInsights(t.id);
+        });
+        el.appendChild(item);
+      });
+
+      const activeCount = trainFleet.filter(t => t.status === 'Active').length;
+      const alertCount = trainFleet.filter(t => t.status === 'Alert').length;
+      const maintCount = trainFleet.filter(t => t.status === 'Maintenance').length;
+
+      document.getElementById('statActive').textContent = activeCount;
+      document.getElementById('statAlerts').textContent = alertCount;
+      document.getElementById('statMaint').textContent = maintCount;
+    }
+
+    function updateAlertCount() {
+      const alertCount = trainFleet.filter(t => 
+        t.status === 'Alert' || t.status === 'Maintenance'
+      ).length;
+      document.getElementById('alertsCount').textContent = `${alertCount} Alerts`;
+    }
+
+    function updateTrainDropdown() {
+      const dropdown = document.getElementById('trainDropdown');
+      dropdown.innerHTML = '';
+      
+      trainFleet.forEach(t => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-left px-3 py-2 text-sm hover:bg-white/10';
+        btn.textContent = t.id;
+        btn.addEventListener('click', () => {
+          document.getElementById('selectedTrain').textContent = t.id;
+          dropdown.classList.add('hidden');
+          showTrainInsights(t.id);
+        });
+        dropdown.appendChild(btn);
+      });
+    }
+
+    function showTrainInsights(trainId) {
+      const train = trainFleet.find(t => t.id === trainId);
+      if (!train) return;
+
+      const metrics = [
+        { 
+          metric: 'Health Score', 
+          value: train.health, 
+          description: 'Overall train condition',
+          icon: 'activity'
+        },
+        { 
+          metric: 'Operating Status', 
+          value: train.status === 'Active' ? 95 : train.status === 'Alert' ? 65 : 40, 
+          description: train.status,
+          icon: 'gauge'
+        },
+        { 
+          metric: 'Mileage Efficiency', 
+          value: Math.max(30, 100 - Math.floor(train.mileage / 250)), 
+          description: `${train.mileage.toLocaleString()} km`,
+          icon: 'route'
+        },
+        { 
+          metric: 'Maintenance Status', 
+          value: train.health >= 80 ? 90 : train.health >= 60 ? 70 : 45, 
+          description: `Next: ${train.nextMaintenance}`,
+          icon: 'wrench'
+        }
+      ];
+
+      const container = document.getElementById('trainMetrics');
+      container.innerHTML = metrics.map((m, idx) => {
+        const change = ((Math.random() * 6) - 3).toFixed(1);
+        return `
+          <div class="rounded-xl p-4 ${idx % 2 === 0 ? 'bg-gradient-to-br from-blue-600/10' : 'bg-gradient-to-br from-purple-600/10'} border border-white/20">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center space-x-2">
+                <i data-lucide="${m.icon}" class="w-4 h-4"></i>
+                <h3 class="text-xs font-medium">${m.metric}</h3>
+              </div>
+              <div class="text-xs px-2 py-1 rounded-full bg-white/20 ${change > 0 ? 'text-green-200' : 'text-red-200'}">${change > 0 ? '+' : ''}${change}%</div>
+            </div>
+            <div class="text-2xl font-bold mb-1">${m.value}%</div>
+            <div class="text-xs text-white/80 mb-2">${m.description}</div>
+            <div class="w-full bg-white/20 rounded-full h-1.5">
+              <div class="h-1.5 rounded-full bg-white/60" style="width:${m.value}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('inductionScore').textContent = train.health + '%';
+      document.getElementById('inductionLabel').textContent = 
+        train.health >= 80 ? 'Excellent Candidate' : 
+        train.health >= 60 ? 'Good Candidate' : 
+        'Needs Attention';
+      
+      const recommendations = {
+        'Active': 'Continue normal operations. Schedule routine inspection.',
+        'Alert': 'Monitor closely. Schedule maintenance within 7 days.',
+        'Maintenance': 'Immediate attention required. Remove from service.'
+      };
+      document.getElementById('aiRecommendation').textContent = 
+        recommendations[train.status] || 'Evaluate train condition';
+
+      import('https://cdn.jsdelivr.net/npm/lucide@0.259.0/dist/esm/lucide.js').then(({createIcons}) => createIcons());
+    }
+
+    function renderUrgentMaintenance() {
+      const urgent = trainFleet
+        .filter(t => t.status === 'Maintenance' || (t.status === 'Alert' && t.health < 70))
+        .slice(0, 3);
+
+      const el = document.getElementById('urgentMaintenance');
+      
+      if (urgent.length === 0) {
+        el.innerHTML = '<div class="text-gray-400 text-sm text-center py-2">No urgent items</div>';
+        return;
+      }
+
+      el.innerHTML = urgent.map(t => `
+        <div class="bg-white/5 rounded-lg p-3">
+          <div class="flex justify-between items-start mb-2">
+            <span class="text-white font-medium text-sm">${t.id}</span>
+            <span class="text-xs px-2 py-1 rounded ${
+              t.status === 'Maintenance' ? 'bg-red-500/20 text-red-400' : 'bg-orange-500/20 text-orange-400'
+            }">${t.status}</span>
+          </div>
+          <div class="text-xs text-gray-300">Health: ${t.health}%</div>
+          <div class="text-xs text-gray-400 mt-1">Next: ${t.nextMaintenance}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderCertificateStatus() {
+      const validCount = trainFleet.filter(t => t.health >= 75).length;
+      const expiringCount = trainFleet.filter(t => t.health >= 50 && t.health < 75).length;
+      const expiredCount = trainFleet.filter(t => t.health < 50).length;
+      const total = trainFleet.length || 1;
+
+      const fitnessData = [
+        { name: 'Valid', value: Math.round((validCount / total) * 100), color: '#10B981' },
+        { name: 'Expiring', value: Math.round((expiringCount / total) * 100), color: '#F59E0B' },
+        { name: 'Expired', value: Math.round((expiredCount / total) * 100), color: '#EF4444' }
+      ];
+
+      if (certChart) {
+        certChart.destroy();
+      }
+
+      const ctx = document.getElementById('certificateChart').getContext('2d');
+      certChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: fitnessData.map(f => f.name),
+          datasets: [{
+            data: fitnessData.map(f => f.value),
+            backgroundColor: fitnessData.map(f => f.color),
+            cutout: '70%'
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          maintainAspectRatio: false
+        }
+      });
+
+      document.getElementById('certPercent').textContent = fitnessData[0].value + '%';
+      
+      const legend = document.getElementById('certLegend');
+      legend.innerHTML = fitnessData.map(f => `
+        <div class="flex items-center justify-between text-sm">
+          <div class="flex items-center space-x-2">
+            <div class="w-2 h-2 rounded-full" style="background:${f.color}"></div>
+            <span class="text-gray-300">${f.name}</span>
+          </div>
+          <span class="text-white font-medium">${f.value}%</span>
+        </div>
+      `).join('');
+    }
+
+    function renderSensorChart() {
+      const now = new Date();
+      const sensorData = [];
+      
+      for (let i = -5; i <= 0; i++) {
+        const time = new Date(now.getTime() + i * 120 * 60000);
+        const h = time.getHours();
+        const isPeak = (h >= 7 && h <= 9) || (h >= 17 && h <= 20);
+        
+        sensorData.push({
+          time: time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          vibration: isPeak ? 3.5 + Math.random() * 1.5 : 2.0 + Math.random() * 1.0,
+          temp: isPeak ? 72 + Math.random() * 8 : 60 + Math.random() * 6
+        });
+      }
+
+      if (sensorChart) {
+        sensorChart.destroy();
+      }
+
+      const ctx = document.getElementById('sensorChart').getContext('2d');
+      sensorChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: sensorData.map(s => s.time),
+          datasets: [
+            {
+              label: 'Vibration',
+              data: sensorData.map(s => s.vibration),
+              fill: true,
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              borderColor: 'rgba(59, 130, 246, 0.8)',
+              tension: 0.4,
+              borderWidth: 2,
+              pointRadius: 3
+            },
+            {
+              label: 'Temperature',
+              data: sensorData.map(s => s.temp),
+              fill: true,
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              borderColor: 'rgba(239, 68, 68, 0.8)',
+              tension: 0.4,
+              borderWidth: 2,
+              pointRadius: 3
+            }
+          ]
+        },
+        options: {
+          maintainAspectRatio: false,
+          plugins: { 
+            legend: { labels: { color: 'rgba(255,255,255,0.9)' } }, 
+            tooltip: { mode: 'index' } 
+          },
+          scales: {
+            x: { 
+              ticks: { color: 'rgba(255,255,255,0.8)' }, 
+              grid: { color: 'rgba(255,255,255,0.04)' } 
+            },
+            y: { 
+              ticks: { color: 'rgba(255,255,255,0.8)' }, 
+              grid: { color: 'rgba(255,255,255,0.04)' } 
+            }
+          }
+        }
+      });
+    }
+
+    // Initialize and start
+    async function initialize() {
+      console.log('Initializing Kochi Metro Command Center...');
+      
+      await checkApiHealth();
+      await fetchFleetData();
+      
+      if (trainFleet.length > 0) {
+        renderUrgentMaintenance();
+        renderCertificateStatus();
+        renderSensorChart();
+        
+        const firstTrain = trainFleet[0];
+        if (firstTrain) {
+          document.getElementById('selectedTrain').textContent = firstTrain.id;
+          showTrainInsights(firstTrain.id);
+        }
+      }
+      
+      refreshInterval = setInterval(async () => {
+        await fetchFleetData();
+        if (trainFleet.length > 0) {
+          renderUrgentMaintenance();
+          renderCertificateStatus();
+          renderSensorChart();
+        }
+      }, 60000);
+      
+      console.log('Initialization complete. Auto-refresh enabled (60s interval)');
+    }
+
+    // Dropdown toggle
+    document.getElementById('trainDropdownBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('trainDropdown').classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('trainDropdown');
+      const btn = document.getElementById('trainDropdownBtn');
+      if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.add('hidden');
+      }
+    });
+
+    // Start the application
+    document.querySelector('[data-tab="overview"]').click();
+    initialize();
+
+    // Refresh icons periodically
+    setInterval(() => {
+      import('https://cdn.jsdelivr.net/npm/lucide@0.259.0/dist/esm/lucide.js').then(({createIcons}) => {
+        createIcons();
+      });
+    }, 3000);
+  </script>
+</body>
+</html>

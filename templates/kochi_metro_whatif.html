@@ -1,0 +1,1789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kochi Metro - Fleet Readiness Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚇</text></svg>">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0;
+        }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 20%, #1e40af 70%, #3730a3 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin: 10px 0;
+            background: linear-gradient(135deg, #ffffff, #cbd5e1, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+        
+        /* Main Grid Layout */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 16px;
+            padding: 25px;
+            height: fit-content;
+        }
+        
+        .panel-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* Train Selector */
+        .train-selector {
+            margin-bottom: 25px;
+        }
+        
+        .train-selector select {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            color: #f8fafc;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .train-selector select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        
+        .train-selector select option {
+            background: #1e293b;
+            color: #f8fafc;
+            padding: 8px;
+        }
+        
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        
+        .action-btn {
+            padding: 8px 12px;
+            background: rgba(71, 85, 105, 0.3);
+            color: #cbd5e1;
+            border: 1px solid rgba(71, 85, 105, 0.4);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .action-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+        
+        /* Key Factors */
+        .key-factors {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .factor-group {
+            background: rgba(59, 130, 246, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(59, 130, 246, 0.15);
+        }
+        
+        .factor-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 12px;
+        }
+        
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        
+        .control-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .control-row label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            font-weight: 500;
+            flex: 1;
+        }
+        
+        .control-value {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            min-width: 60px;
+            text-align: right;
+        }
+        
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 22px;
+            background: rgba(71, 85, 105, 0.4);
+            border-radius: 11px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            margin-left: 10px;
+        }
+        
+        .toggle-switch.active {
+            background: #3b82f6;
+        }
+        
+        .toggle-switch::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+        }
+        
+        .toggle-switch.active::before {
+            transform: translateX(22px);
+        }
+        
+        /* Sliders */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 2;
+        }
+        
+        .slider {
+            flex: 1;
+            height: 4px;
+            background: rgba(71, 85, 105, 0.3);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+        
+        /* Select Inputs */
+        .control-select {
+            padding: 6px 10px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(71, 85, 105, 0.4);
+            border-radius: 4px;
+            color: #f8fafc;
+            font-size: 0.8rem;
+            cursor: pointer;
+            min-width: 80px;
+        }
+        
+        /* Action Buttons */
+        .main-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(71, 85, 105, 0.3);
+            color: #cbd5e1;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(71, 85, 105, 0.5);
+            color: #f1f5f9;
+        }
+        
+        /* Results Panel */
+        .results-section {
+            display: grid;
+            gap: 20px;
+        }
+        
+        /* Decision Card */
+        .decision-card {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .decision-card.revenue-service {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05));
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        
+        .decision-card.standby {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.05));
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+        
+        .decision-card.maintenance {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        
+        .readiness-score {
+            font-size: 4.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .readiness-label {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            margin-bottom: 15px;
+        }
+        
+        .decision-status {
+            display: inline-block;
+            padding: 12px 28px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .decision-status.revenue-service {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 2px solid rgba(16, 185, 129, 0.4);
+        }
+        
+        .decision-status.standby {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            border: 2px solid rgba(245, 158, 11, 0.4);
+        }
+        
+        .decision-status.maintenance {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 2px solid rgba(239, 68, 68, 0.4);
+        }
+        
+        /* Insights Grid */
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .insight-card {
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.15);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .insight-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .insight-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin-bottom: 5px;
+        }
+        
+        .insight-trend {
+            font-size: 0.8rem;
+        }
+        
+        .trend-up { color: #10b981; }
+        .trend-down { color: #ef4444; }
+        .trend-stable { color: #f59e0b; }
+        
+        /* Critical Factors */
+        .critical-factors {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 16px;
+            padding: 25px;
+        }
+        
+        .factors-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 20px;
+        }
+        
+        .factor-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: rgba(59, 130, 246, 0.05);
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        
+        .factor-item.critical {
+            border-left-color: #ef4444;
+        }
+        
+        .factor-item.warning {
+            border-left-color: #f59e0b;
+        }
+        
+        .factor-item.good {
+            border-left-color: #10b981;
+        }
+        
+        .factor-icon {
+            font-size: 1.2rem;
+            min-width: 24px;
+        }
+        
+        .factor-content {
+            flex: 1;
+        }
+        
+        .factor-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 2px;
+        }
+        
+        .factor-description {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        
+        .factor-impact {
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 4px;
+            min-width: 60px;
+            text-align: center;
+        }
+        
+        .impact-high {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        
+        .impact-medium {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+        
+        .impact-low {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+        
+        /* Fleet Overview */
+        .fleet-overview {
+            grid-column: 1 / -1;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 16px;
+            padding: 25px;
+        }
+        
+        .fleet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .fleet-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .fleet-stat {
+            text-align: center;
+            padding: 15px;
+            background: rgba(59, 130, 246, 0.05);
+            border-radius: 8px;
+        }
+        
+        .fleet-stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+        
+        .fleet-stat-label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+        
+        /* Comparison Chart */
+        .chart-container {
+            background: rgba(59, 130, 246, 0.02);
+            border-radius: 12px;
+            padding: 20px;
+            height: 300px;
+            position: relative;
+        }
+        
+        /* Loading States */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(59, 130, 246, 0.2);
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid;
+            border-radius: 12px;
+            padding: 15px 20px;
+            color: #f8fafc;
+            font-weight: 500;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            max-width: 320px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(5, 46, 22, 0.95);
+        }
+        
+        .notification.warning {
+            border-color: rgba(245, 158, 11, 0.3);
+            background: rgba(69, 26, 3, 0.95);
+        }
+        
+        .notification.error {
+            border-color: rgba(239, 68, 68, 0.3);
+            background: rgba(69, 10, 10, 0.95);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .control-panel {
+                order: 2;
+            }
+            
+            .results-section {
+                order: 1;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .quick-actions {
+                grid-template-columns: 1fr;
+            }
+            
+            .readiness-score {
+                font-size: 3.5rem;
+            }
+            
+            .insights-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .fleet-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <div class="panel-title">
+                    What-If Analysis
+                </div>
+                
+                <!-- Train Selector -->
+                <div class="train-selector">
+                    <select id="trainSelector">
+                        <option value="">Select Trainset for Analysis...</option>
+                    </select>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button class="action-btn" onclick="loadScenario('optimal')">High Readiness</button>
+                    <button class="action-btn" onclick="loadScenario('maintenance')">Maintenance Due</button>
+                    <button class="action-btn" onclick="loadScenario('average')">Average State</button>
+                    <button class="action-btn" onclick="resetToDefaults()">Reset All</button>
+                </div>
+                
+                <!-- Key Factors -->
+                <div class="key-factors">
+                    <!-- Operational Clearances -->
+                    <div class="factor-group">
+                        <div class="factor-title">Operational Clearances</div>
+                        
+                        <div class="control-row">
+                            <label>Fitness Certificate</label>
+                            <div class="toggle-switch active" id="fitnessToggle" onclick="toggleSwitch('fitness_certificate')"></div>
+                        </div>
+                        
+                        <div class="control-row">
+                            <label>Pending Maintenance</label>
+                            <div class="toggle-switch" id="maintenanceToggle" onclick="toggleSwitch('pending_maintenance')"></div>
+                        </div>
+                        
+                        <div class="control-row">
+                            <label>Work Orders</label>
+                            <select class="control-select" id="work_order_status">
+                                <option value="Closed">Closed</option>
+                                <option value="Open">Open</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Physical Condition -->
+                    <div class="factor-group">
+                        <div class="factor-title">Physical Condition</div>
+                        
+                        <div class="control-row">
+                            <label>Brake Wear</label>
+                            <div class="slider-container">
+                                <input type="range" class="slider" id="brake_wear" min="0" max="100" value="30" oninput="updateSlider('brake_wear')">
+                            </div>
+                            <div class="control-value" id="brake_wear_value">30%</div>
+                        </div>
+                        
+                        <div class="control-row">
+                            <label>MTBF (Hours)</label>
+                            <div class="slider-container">
+                                <input type="range" class="slider" id="mtbf" min="500" max="3000" value="1500" step="50" oninput="updateSlider('mtbf')">
+                            </div>
+                            <div class="control-value" id="mtbf_value">1500h</div>
+                        </div>
+                        
+                        <div class="control-row">
+                            <label>Mileage</label>
+                            <div class="slider-container">
+                                <input type="range" class="slider" id="mileage_km" min="1000" max="50000" value="25000" step="1000" oninput="updateSlider('mileage_km')">
+                            </div>
+                            <div class="control-value" id="mileage_km_value">25K km</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Depot Operations -->
+                    <div class="factor-group">
+                        <div class="factor-title">Depot Operations</div>
+                        
+                        <div class="control-row">
+                            <label>Cleaning Status</label>
+                            <select class="control-select" id="cleaning_status">
+                                <option value="Clean">Clean</option>
+                                <option value="In-progress">In Progress</option>
+                                <option value="Pending">Pending</option>
+                            </select>
+                        </div>
+                        
+                        <div class="control-row">
+                            <label>Available Bays</label>
+                            <div class="slider-container">
+                                <input type="range" class="slider" id="available_bays" min="1" max="6" value="3" oninput="updateSlider('available_bays')">
+                            </div>
+                            <div class="control-value" id="available_bays_value">3</div>
+                        </div>
+                        
+                        <div class="control-row">
+                            <label>Stabling Score</label>
+                            <div class="slider-container">
+                                <input type="range" class="slider" id="stabling_geometry_score" min="0" max="1" value="0.7" step="0.1" oninput="updateSlider('stabling_geometry_score')">
+                            </div>
+                            <div class="control-value" id="stabling_geometry_score_value">0.7</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Main Actions -->
+                <div class="main-actions">
+                    <button class="btn btn-primary" onclick="runAnalysis()">
+                        Analyze Readiness
+                    </button>
+                    <button class="btn btn-secondary" onclick="generateReport()">
+                        Report
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Results Section -->
+            <div class="results-section">
+                <!-- Decision Card -->
+                <div class="decision-card revenue-service" id="decisionCard">
+                    <div class="readiness-score" id="readinessScore">--</div>
+                    <div class="readiness-label">Operational Readiness Score</div>
+                    <div class="decision-status revenue-service" id="decisionStatus">
+                        Select Train for Analysis
+                    </div>
+                </div>
+                
+                <!-- Key Insights -->
+                <div class="insights-grid">
+                    <div class="insight-card">
+                        <div class="insight-title">Service Confidence</div>
+                        <div class="insight-value" id="serviceConfidence">--%</div>
+                        <div class="insight-trend trend-stable" id="confidenceTrend">Select Train</div>
+                    </div>
+                    <div class="insight-card">
+                        <div class="insight-title">Risk Assessment</div>
+                        <div class="insight-value" id="riskAssessment">--</div>
+                        <div class="insight-trend trend-stable" id="riskTrend">Select Train</div>
+                    </div>
+                    <div class="insight-card">
+                        <div class="insight-title">Next Maintenance</div>
+                        <div class="insight-value" id="nextMaintenance">--</div>
+                        <div class="insight-trend trend-stable" id="maintenanceText">Days</div>
+                    </div>
+                </div>
+                
+                <!-- Critical Factors -->
+                <div class="critical-factors">
+                    <div class="factors-title">Critical Decision Factors</div>
+                    <div id="criticalFactorsList">
+                        <div class="factor-item good">
+                            <div class="factor-icon">ℹ️</div>
+                            <div class="factor-content">
+                                <div class="factor-name">No Train Selected</div>
+                                <div class="factor-description">Please select a trainset to begin analysis</div>
+                            </div>
+                            <div class="factor-impact impact-low">Info</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Fleet Overview -->
+        <div class="fleet-overview">
+            <div class="fleet-header">
+                <h2 style="color: #f1f5f9; font-size: 1.4rem; margin: 0;">Fleet Status Overview</h2>
+                <div style="color: #94a3b8; font-size: 0.9rem;">Last Updated: <span id="lastUpdated">Loading...</span></div>
+            </div>
+            
+            <div class="fleet-stats">
+                <div class="fleet-stat">
+                    <div class="fleet-stat-value" style="color: #10b981;" id="readyTrains">--</div>
+                    <div class="fleet-stat-label">Revenue Ready</div>
+                </div>
+                <div class="fleet-stat">
+                    <div class="fleet-stat-value" style="color: #f59e0b;" id="standbyTrains">--</div>
+                    <div class="fleet-stat-label">Standby</div>
+                </div>
+                <div class="fleet-stat">
+                    <div class="fleet-stat-value" style="color: #ef4444;" id="maintenanceTrains">--</div>
+                    <div class="fleet-stat-label">Maintenance</div>
+                </div>
+                <div class="fleet-stat">
+                    <div class="fleet-stat-value" style="color: #3b82f6;" id="avgReadiness">--</div>
+                    <div class="fleet-stat-label">Avg Score</div>
+                </div>
+                <div class="fleet-stat">
+                    <div class="fleet-stat-value" style="color: #8b5cf6;" id="totalMileage">--</div>
+                    <div class="fleet-stat-label">Total Mileage</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="fleetChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let currentTrainData = null;
+        let isBackendAvailable = false;
+        let fleetChart = null;
+        let trainList = [];
+        let fleetData = [];
+        let databaseConnected = false;
+        let modelLoaded = false;
+        
+        // Toggle states
+        let toggleStates = {
+            fitness_certificate: true,
+            pending_maintenance: false
+        };
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('Initializing Kochi Metro Command Center');
+            
+            await checkBackendStatus();
+            await loadTrainFleet();
+            await loadFleetOverview();
+            initializeDefaults();
+            updateTimestamp();
+            
+            // Auto-refresh every 60 seconds
+            setInterval(async () => {
+                if (databaseConnected) {
+                    await loadFleetOverview();
+                    updateTimestamp();
+                }
+            }, 60000);
+        });
+        
+        async function checkBackendStatus() {
+            try {
+                const response = await fetch('http://localhost:5011/api/whatif/health');
+                if (response.ok) {
+                    const health = await response.json();
+                    isBackendAvailable = true;
+                    databaseConnected = health.database_connected;
+                    modelLoaded = health.model_loaded;
+                    
+                    if (databaseConnected) {
+                        showNotification('Connected to Supabase database', 'success');
+                    } else {
+                        showNotification('Database connection failed - limited functionality', 'warning');
+                    }
+                } else {
+                    throw new Error('Backend unavailable');
+                }
+            } catch (error) {
+                isBackendAvailable = false;
+                databaseConnected = false;
+                modelLoaded = false;
+                showNotification('Backend server is not running', 'error');
+            }
+        }
+        
+        async function loadTrainFleet() {
+            const selector = document.getElementById('trainSelector');
+            
+            // Clear existing options except the placeholder
+            while (selector.children.length > 1) {
+                selector.removeChild(selector.lastChild);
+            }
+            
+            if (isBackendAvailable && databaseConnected) {
+                try {
+                    const response = await fetch('http://localhost:5011/api/fleet');
+                    if (response.ok) {
+                        trainList = await response.json();
+                        
+                        if (trainList.length === 0) {
+                            showNotification('No trains found in database', 'warning');
+                            return;
+                        }
+                        
+                        trainList.forEach(train => {
+                            const option = document.createElement('option');
+                            option.value = train.train_number;
+                            
+                            const status = train.fitness_certificate ? 'Certified' : 'Pending';
+                            const mileage = Math.round((train.mileage_km || 0) / 1000);
+                            const brakeWear = train.brake_wear || 0;
+                            
+                            option.textContent = `${train.train_number} - ${mileage}K km, Brake: ${brakeWear}%, ${status}`;
+                            selector.appendChild(option);
+                        });
+                        
+                        showNotification(`Loaded ${trainList.length} trainsets from Supabase`, 'success');
+                        return;
+                    } else {
+                        throw new Error('Failed to fetch trains');
+                    }
+                } catch (error) {
+                    console.warn('Could not load trains from database:', error);
+                    showNotification('Failed to load train data from database', 'error');
+                }
+            } else {
+                showNotification('Database not connected - cannot load train data', 'error');
+            }
+        }
+        
+        async function loadFleetOverview() {
+            if (!isBackendAvailable || !databaseConnected) {
+                updateFleetStats({
+                    ready: 0, standby: 0, maintenance: 0,
+                    avgScore: 0, totalMileage: 0
+                });
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:5011/api/fleet');
+                if (response.ok) {
+                    fleetData = await response.json();
+                    
+                    if (fleetData.length === 0) {
+                        updateFleetStats({
+                            ready: 0, standby: 0, maintenance: 0,
+                            avgScore: 0, totalMileage: 0
+                        });
+                        return;
+                    }
+                    
+                    const stats = calculateFleetStatsFromAppPy(fleetData);
+                    updateFleetStats(stats);
+                    updateFleetChart(fleetData);
+                    
+                } else {
+                    throw new Error('Fleet data unavailable');
+                }
+            } catch (error) {
+                console.warn('Could not load fleet data:', error);
+                showNotification('Failed to load fleet overview', 'error');
+                updateFleetStats({
+                    ready: 0, standby: 0, maintenance: 0,
+                    avgScore: 0, totalMileage: 0
+                });
+            }
+        }
+        
+        function calculateFleetStatsFromAppPy(fleetData) {
+            let ready = 0, standby = 0, maintenance = 0;
+            let totalScore = 0, totalMileage = 0;
+            
+            fleetData.forEach(train => {
+                if (train.status === 'Active') ready++;
+                else if (train.status === 'Alert') standby++;
+                else if (train.status === 'Maintenance') maintenance++;
+                
+                totalScore += train.health;
+                totalMileage += train.mileage || 0;
+            });
+            
+            return {
+                ready,
+                standby,
+                maintenance,
+                avgScore: fleetData.length > 0 ? (totalScore / fleetData.length) / 10 : 0,
+                totalMileage
+            };
+        }
+        
+        function updateFleetStats(stats) {
+            document.getElementById('readyTrains').textContent = stats.ready;
+            document.getElementById('standbyTrains').textContent = stats.standby;
+            document.getElementById('maintenanceTrains').textContent = stats.maintenance;
+            document.getElementById('avgReadiness').textContent = stats.avgScore.toFixed(1);
+            document.getElementById('totalMileage').textContent = Math.round(stats.totalMileage / 1000) + 'K';
+        }
+        
+        function updateFleetChart(data) {
+            if (fleetChart) {
+                fleetChart.destroy();
+            }
+            
+            const ctx = document.getElementById('fleetChart').getContext('2d');
+            
+            if (!data || data.length === 0) {
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '16px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText('No fleet data available', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
+            }
+            
+            const trainNumbers = data.map(t => t.id);
+            const healthScores = data.map(t => t.health);
+            
+            fleetChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: trainNumbers,
+                    datasets: [{
+                        label: 'Health Score',
+                        data: healthScores,
+                        backgroundColor: healthScores.map(score => 
+                            score >= 80 ? 'rgba(16, 185, 129, 0.7)' :
+                            score >= 40 ? 'rgba(245, 158, 11, 0.7)' :
+                            'rgba(239, 68, 68, 0.7)'
+                        ),
+                        borderColor: healthScores.map(score => 
+                            score >= 80 ? '#10b981' :
+                            score >= 40 ? '#f59e0b' :
+                            '#ef4444'
+                        ),
+                        borderWidth: 2,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#f8fafc',
+                            bodyColor: '#cbd5e1',
+                            borderColor: 'rgba(59, 130, 246, 0.3)',
+                            borderWidth: 1,
+                            callbacks: {
+                                title: function(context) {
+                                    const train = data[context[0].dataIndex];
+                                    return `${train.id} - ${train.status}`;
+                                },
+                                label: function(context) {
+                                    const train = data[context.dataIndex];
+                                    return [
+                                        `Health: ${train.health}%`,
+                                        `Mileage: ${(train.mileage / 1000).toFixed(1)}K km`,
+                                        `Status: ${train.status}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { 
+                                color: '#94a3b8',
+                                font: { size: 10 }
+                            },
+                            grid: { color: 'rgba(71, 85, 105, 0.2)' },
+                            title: {
+                                display: true,
+                                text: 'Health Score (%)',
+                                color: '#cbd5e1',
+                                font: { size: 11 }
+                            }
+                        },
+                        x: {
+                            ticks: { 
+                                color: '#94a3b8',
+                                font: { size: 8 },
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: { display: false },
+                            title: {
+                                display: true,
+                                text: 'Train Numbers',
+                                color: '#cbd5e1',
+                                font: { size: 11 }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
+        
+        function initializeDefaults() {
+            document.getElementById('brake_wear').value = 30;
+            document.getElementById('mtbf').value = 1500;
+            document.getElementById('mileage_km').value = 25000;
+            document.getElementById('available_bays').value = 3;
+            document.getElementById('stabling_geometry_score').value = 0.7;
+            
+            updateSlider('brake_wear');
+            updateSlider('mtbf');
+            updateSlider('mileage_km');
+            updateSlider('available_bays');
+            updateSlider('stabling_geometry_score');
+            
+            const inputs = ['brake_wear', 'mtbf', 'mileage_km', 'available_bays', 'stabling_geometry_score'];
+            inputs.forEach(id => {
+                document.getElementById(id).addEventListener('input', debounce(runAnalysis, 300));
+            });
+            
+            const selects = ['work_order_status', 'cleaning_status'];
+            selects.forEach(id => {
+                document.getElementById(id).addEventListener('change', runAnalysis);
+            });
+            
+            document.getElementById('trainSelector').addEventListener('change', loadSelectedTrain);
+        }
+        
+        async function loadSelectedTrain() {
+            const trainNumber = document.getElementById('trainSelector').value;
+            if (!trainNumber) {
+                resetUI();
+                return;
+            }
+            
+            if (!databaseConnected) {
+                showNotification('Cannot load train - database not connected', 'error');
+                return;
+            }
+            
+            try {
+                const trainData = trainList.find(t => t.train_number === trainNumber);
+                if (trainData) {
+                    currentTrainData = trainData;
+                    populateFormWithTrainData(trainData);
+                    showNotification(`Loaded ${trainNumber} from Supabase database`, 'success');
+                    await runAnalysis();
+                } else {
+                    showNotification(`Train ${trainNumber} data not found`, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading train:', error);
+                showNotification('Failed to load train data', 'error');
+            }
+        }
+        
+        function populateFormWithTrainData(trainData) {
+            if (trainData.brake_wear !== undefined && trainData.brake_wear !== null) {
+                document.getElementById('brake_wear').value = trainData.brake_wear;
+                updateSlider('brake_wear');
+            }
+            
+            if (trainData.mtbf !== undefined && trainData.mtbf !== null) {
+                document.getElementById('mtbf').value = Math.round(trainData.mtbf);
+                updateSlider('mtbf');
+            }
+            
+            if (trainData.mileage_km !== undefined && trainData.mileage_km !== null) {
+                document.getElementById('mileage_km').value = trainData.mileage_km;
+                updateSlider('mileage_km');
+            }
+            
+            if (trainData.available_bays !== undefined && trainData.available_bays !== null) {
+                document.getElementById('available_bays').value = trainData.available_bays;
+                updateSlider('available_bays');
+            }
+            
+            if (trainData.stabling_geometry_score !== undefined && trainData.stabling_geometry_score !== null) {
+                document.getElementById('stabling_geometry_score').value = trainData.stabling_geometry_score;
+                updateSlider('stabling_geometry_score');
+            }
+            
+            if (trainData.fitness_certificate !== undefined && trainData.fitness_certificate !== null) {
+                toggleStates.fitness_certificate = trainData.fitness_certificate;
+                updateToggleDisplay('fitnessToggle', trainData.fitness_certificate);
+            }
+            
+            if (trainData.pending_maintenance !== undefined && trainData.pending_maintenance !== null) {
+                toggleStates.pending_maintenance = trainData.pending_maintenance;
+                updateToggleDisplay('maintenanceToggle', trainData.pending_maintenance);
+            }
+            
+            if (trainData.work_order_status) {
+                document.getElementById('work_order_status').value = trainData.work_order_status;
+            }
+            
+            if (trainData.cleaning_status) {
+                document.getElementById('cleaning_status').value = trainData.cleaning_status;
+            }
+        }
+        
+        function toggleSwitch(key) {
+            toggleStates[key] = !toggleStates[key];
+            const toggleId = key === 'fitness_certificate' ? 'fitnessToggle' : 'maintenanceToggle';
+            updateToggleDisplay(toggleId, toggleStates[key]);
+            runAnalysis();
+        }
+        
+        function updateToggleDisplay(toggleId, state) {
+            const toggle = document.getElementById(toggleId);
+            if (state) {
+                toggle.classList.add('active');
+            } else {
+                toggle.classList.remove('active');
+            }
+        }
+        
+        function updateSlider(id) {
+            const slider = document.getElementById(id);
+            const valueSpan = document.getElementById(id + '_value');
+            let value = slider.value;
+            
+            switch(id) {
+                case 'brake_wear':
+                    valueSpan.textContent = value + '%';
+                    break;
+                case 'mtbf':
+                    valueSpan.textContent = value + 'h';
+                    break;
+                case 'mileage_km':
+                    valueSpan.textContent = Math.round(parseInt(value) / 1000) + 'K km';
+                    break;
+                case 'stabling_geometry_score':
+                    valueSpan.textContent = parseFloat(value).toFixed(1);
+                    break;
+                default:
+                    valueSpan.textContent = value;
+            }
+        }
+        
+        async function runAnalysis() {
+            const trainNumber = document.getElementById('trainSelector').value;
+            if (!trainNumber) {
+                showNotification('Please select a train first', 'warning');
+                return;
+            }
+            
+            if (!isBackendAvailable) {
+                showNotification('Backend server not available', 'error');
+                return;
+            }
+            
+            try {
+                showLoading(true);
+                
+                const formData = collectFormData();
+                const result = await callBackendAPI(formData);
+                
+                updateResults(result);
+                updateCriticalFactors(result);
+                
+                showLoading(false);
+                
+            } catch (error) {
+                console.error('Analysis error:', error);
+                showNotification('Analysis failed: ' + error.message, 'error');
+                showLoading(false);
+            }
+        }
+        
+        function collectFormData() {
+            const trainNumber = document.getElementById('trainSelector').value;
+            
+            let formData = {};
+            
+            if (currentTrainData) {
+                formData = { ...currentTrainData };
+            }
+            
+            formData.train_number = trainNumber;
+            formData.brake_wear = parseInt(document.getElementById('brake_wear').value);
+            formData.mtbf = parseInt(document.getElementById('mtbf').value);
+            formData.mileage_km = parseInt(document.getElementById('mileage_km').value);
+            formData.available_bays = parseInt(document.getElementById('available_bays').value);
+            formData.stabling_geometry_score = parseFloat(document.getElementById('stabling_geometry_score').value);
+            formData.fitness_certificate = toggleStates.fitness_certificate;
+            formData.pending_maintenance = toggleStates.pending_maintenance;
+            formData.work_order_status = document.getElementById('work_order_status').value;
+            formData.cleaning_status = document.getElementById('cleaning_status').value;
+            
+            return formData;
+        }
+        
+        async function callBackendAPI(formData) {
+            const response = await fetch('http://localhost:5011/api/whatif/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            return {
+                score: result.prediction,
+                category: result.category,
+                categoryClass: result.category_class,
+                trainNumber: result.train_number,
+                dataSource: result.data_source,
+                overridesApplied: result.overrides_applied
+            };
+        }
+        
+        function updateResults(result) {
+            animateScore(result.score);
+            
+            const decisionCard = document.getElementById('decisionCard');
+            const decisionStatus = document.getElementById('decisionStatus');
+            
+            decisionCard.className = `decision-card ${result.categoryClass}`;
+            decisionStatus.className = `decision-status ${result.categoryClass}`;
+            decisionStatus.textContent = result.category;
+            
+            const confidence = Math.round((result.score / 10) * 100);
+            document.getElementById('serviceConfidence').textContent = confidence + '%';
+            
+            const confidenceTrend = document.getElementById('confidenceTrend');
+            if (confidence >= 85) {
+                confidenceTrend.textContent = 'High Reliability';
+                confidenceTrend.className = 'insight-trend trend-up';
+            } else if (confidence >= 70) {
+                confidenceTrend.textContent = 'Moderate Reliability';
+                confidenceTrend.className = 'insight-trend trend-stable';
+            } else {
+                confidenceTrend.textContent = 'Low Reliability';
+                confidenceTrend.className = 'insight-trend trend-down';
+            }
+            
+            const riskElement = document.getElementById('riskAssessment');
+            const riskTrend = document.getElementById('riskTrend');
+            
+            if (result.score >= 7.5) {
+                riskElement.textContent = 'Low';
+                riskElement.style.color = '#10b981';
+                riskTrend.textContent = 'Within Limits';
+                riskTrend.className = 'insight-trend trend-stable';
+            } else if (result.score >= 6.0) {
+                riskElement.textContent = 'Medium';
+                riskElement.style.color = '#f59e0b';
+                riskTrend.textContent = 'Monitor Closely';
+                riskTrend.className = 'insight-trend trend-up';
+            } else {
+                riskElement.textContent = 'High';
+                riskElement.style.color = '#ef4444';
+                riskTrend.textContent = 'Action Required';
+                riskTrend.className = 'insight-trend trend-down';
+            }
+            
+            const maintenanceDays = Math.max(1, Math.round((result.score - 3) * 5));
+            document.getElementById('nextMaintenance').textContent = maintenanceDays;
+            
+            const sourceMsg = result.dataSource === 'database' ? 
+                `Analysis complete using Supabase data (${result.overridesApplied} overrides)` :
+                'Analysis complete using manual input only';
+            showNotification(sourceMsg, 'success');
+        }
+        
+        function updateCriticalFactors(result) {
+            const formData = collectFormData();
+            const factorsList = document.getElementById('criticalFactorsList');
+            
+            const factors = [
+                {
+                    name: 'Fitness Certificate',
+                    description: formData.fitness_certificate ? 'Valid certification' : 'Certification expired',
+                    icon: formData.fitness_certificate ? '✅' : '❌',
+                    impact: formData.fitness_certificate ? 'low' : 'high',
+                    impactText: formData.fitness_certificate ? 'Compliant' : 'Critical',
+                    type: formData.fitness_certificate ? 'good' : 'critical'
+                },
+                {
+                    name: 'Maintenance Status',
+                    description: formData.pending_maintenance ? 'Maintenance overdue' : 'Up to date',
+                    icon: formData.pending_maintenance ? '⚠️' : '✅',
+                    impact: formData.pending_maintenance ? 'high' : 'low',
+                    impactText: formData.pending_maintenance ? 'Critical' : 'Good',
+                    type: formData.pending_maintenance ? 'critical' : 'good'
+                },
+                {
+                    name: 'Brake Condition',
+                    description: `${formData.brake_wear}% wear level`,
+                    icon: formData.brake_wear > 70 ? '🔴' : formData.brake_wear > 40 ? '🟡' : '🟢',
+                    impact: formData.brake_wear > 70 ? 'high' : formData.brake_wear > 40 ? 'medium' : 'low',
+                    impactText: formData.brake_wear > 70 ? 'Critical' : formData.brake_wear > 40 ? 'Monitor' : 'Good',
+                    type: formData.brake_wear > 70 ? 'critical' : formData.brake_wear > 40 ? 'warning' : 'good'
+                },
+                {
+                    name: 'Work Orders',
+                    description: `${formData.work_order_status.toLowerCase()} status`,
+                    icon: formData.work_order_status === 'Closed' ? '✅' : '⚠️',
+                    impact: formData.work_order_status === 'Closed' ? 'low' : 'medium',
+                    impactText: formData.work_order_status === 'Closed' ? 'Complete' : 'Pending',
+                    type: formData.work_order_status === 'Closed' ? 'good' : 'warning'
+                }
+            ];
+            
+            factorsList.innerHTML = factors.map(factor => `
+                <div class="factor-item ${factor.type}">
+                    <div class="factor-icon">${factor.icon}</div>
+                    <div class="factor-content">
+                        <div class="factor-name">${factor.name}</div>
+                        <div class="factor-description">${factor.description}</div>
+                    </div>
+                    <div class="factor-impact impact-${factor.impact}">${factor.impactText}</div>
+                </div>
+            `).join('');
+        }
+        
+        function animateScore(targetScore) {
+            const scoreElement = document.getElementById('readinessScore');
+            const currentScore = parseFloat(scoreElement.textContent) || 0;
+            const duration = 1000;
+            const startTime = performance.now();
+            
+            function updateScore(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+                const currentValue = currentScore + (targetScore - currentScore) * easeOutCubic;
+                
+                scoreElement.textContent = currentValue.toFixed(1);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(updateScore);
+                }
+            }
+            
+            requestAnimationFrame(updateScore);
+        }
+        
+        function loadScenario(type) {
+            if (!currentTrainData) {
+                showNotification('Please select a train first', 'warning');
+                return;
+            }
+            
+            const scenarios = {
+                optimal: {
+                    brake_wear: 15,
+                    mtbf: 2500,
+                    mileage_km: 15000,
+                    available_bays: 5,
+                    stabling_geometry_score: 0.9,
+                    fitness_certificate: true,
+                    pending_maintenance: false,
+                    work_order_status: 'Closed',
+                    cleaning_status: 'Clean'
+                },
+                maintenance: {
+                    brake_wear: 80,
+                    mtbf: 800,
+                    mileage_km: 45000,
+                    available_bays: 1,
+                    stabling_geometry_score: 0.3,
+                    fitness_certificate: false,
+                    pending_maintenance: true,
+                    work_order_status: 'Open',
+                    cleaning_status: 'Pending'
+                },
+                average: {
+                    brake_wear: 45,
+                    mtbf: 1500,
+                    mileage_km: 25000,
+                    available_bays: 3,
+                    stabling_geometry_score: 0.7,
+                    fitness_certificate: true,
+                    pending_maintenance: false,
+                    work_order_status: 'Closed',
+                    cleaning_status: 'Clean'
+                }
+            };
+            
+            const scenario = scenarios[type];
+            if (scenario) {
+                document.getElementById('brake_wear').value = scenario.brake_wear;
+                document.getElementById('mtbf').value = scenario.mtbf;
+                document.getElementById('mileage_km').value = scenario.mileage_km;
+                document.getElementById('available_bays').value = scenario.available_bays;
+                document.getElementById('stabling_geometry_score').value = scenario.stabling_geometry_score;
+                
+                updateSlider('brake_wear');
+                updateSlider('mtbf');
+                updateSlider('mileage_km');
+                updateSlider('available_bays');
+                updateSlider('stabling_geometry_score');
+                
+                toggleStates.fitness_certificate = scenario.fitness_certificate;
+                toggleStates.pending_maintenance = scenario.pending_maintenance;
+                updateToggleDisplay('fitnessToggle', scenario.fitness_certificate);
+                updateToggleDisplay('maintenanceToggle', scenario.pending_maintenance);
+                
+                document.getElementById('work_order_status').value = scenario.work_order_status;
+                document.getElementById('cleaning_status').value = scenario.cleaning_status;
+                
+                showNotification(`Applied ${type.replace('_', ' ')} scenario parameters`, 'success');
+                
+                setTimeout(() => {
+                    runAnalysis();
+                }, 100);
+            }
+        }
+        
+        function resetToDefaults() {
+            const trainNumber = document.getElementById('trainSelector').value;
+            if (!trainNumber) {
+                showNotification('Please select a train first', 'warning');
+                return;
+            }
+            
+            if (currentTrainData) {
+                populateFormWithTrainData(currentTrainData);
+                runAnalysis();
+                showNotification(`Reset to original database values for ${trainNumber}`, 'success');
+            } else {
+                showNotification('No original data available to reset to', 'warning');
+            }
+        }
+        
+        function resetUI() {
+            document.getElementById('readinessScore').textContent = '--';
+            document.getElementById('decisionStatus').textContent = 'Select Train for Analysis';
+            document.getElementById('decisionCard').className = 'decision-card revenue-service';
+            document.getElementById('decisionStatus').className = 'decision-status revenue-service';
+            
+            document.getElementById('serviceConfidence').textContent = '--%';
+            document.getElementById('confidenceTrend').textContent = 'Select Train';
+            document.getElementById('confidenceTrend').className = 'insight-trend trend-stable';
+            
+            document.getElementById('riskAssessment').textContent = '--';
+            document.getElementById('riskTrend').textContent = 'Select Train';
+            document.getElementById('riskTrend').className = 'insight-trend trend-stable';
+            
+            document.getElementById('nextMaintenance').textContent = '--';
+            
+            document.getElementById('criticalFactorsList').innerHTML = `
+                <div class="factor-item good">
+                    <div class="factor-icon">ℹ️</div>
+                    <div class="factor-content">
+                        <div class="factor-name">No Train Selected</div>
+                        <div class="factor-description">Please select a trainset to begin analysis</div>
+                    </div>
+                    <div class="factor-impact impact-low">Info</div>
+                </div>
+            `;
+            
+            currentTrainData = null;
+        }
+        
+        function generateReport() {
+            const trainNumber = document.getElementById('trainSelector').value;
+            if (!trainNumber) {
+                showNotification('Please select a train first', 'warning');
+                return;
+            }
+            
+            const formData = collectFormData();
+            const timestamp = new Date().toLocaleString();
+            
+            let reportData = {
+                trainNumber: formData.train_number,
+                timestamp: timestamp,
+                readinessScore: parseFloat(document.getElementById('readinessScore').textContent) || 0,
+                decision: document.getElementById('decisionStatus').textContent,
+                confidence: document.getElementById('serviceConfidence').textContent,
+                riskLevel: document.getElementById('riskAssessment').textContent,
+                dataSource: currentTrainData ? 'Supabase Database' : 'Manual Input Only',
+                databaseConnected: databaseConnected,
+                parameters: formData,
+                recommendation: generateRecommendation(formData)
+            };
+            
+            const reportJson = JSON.stringify(reportData, null, 2);
+            const blob = new Blob([reportJson], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `KMRL_Readiness_Report_${formData.train_number}_${new Date().getTime()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('Readiness report generated and downloaded', 'success');
+        }
+        
+        function generateRecommendation(formData) {
+            let recommendations = [];
+            
+            if (!formData.fitness_certificate) {
+                recommendations.push('CRITICAL: Renew fitness certificate immediately');
+            }
+            
+            if (formData.pending_maintenance) {
+                recommendations.push('HIGH: Complete pending maintenance work');
+            }
+            
+            if (formData.brake_wear > 70) {
+                recommendations.push('HIGH: Replace brake components');
+            }
+            
+            if (formData.mtbf < 1000) {
+                recommendations.push('MEDIUM: Investigate reliability issues');
+            }
+            
+            if (formData.work_order_status === 'Open') {
+                recommendations.push('MEDIUM: Close outstanding work orders');
+            }
+            
+            if (formData.cleaning_status !== 'Clean') {
+                recommendations.push('LOW: Schedule cleaning before service');
+            }
+            
+            if (recommendations.length === 0) {
+                recommendations.push('Train is ready for revenue service');
+            }
+            
+            return recommendations;
+        }
+        
+        function showLoading(show) {
+            const loadingOverlay = document.querySelector('.loading-overlay');
+            
+            if (show) {
+                if (!loadingOverlay) {
+                    const overlay = document.createElement('div');
+                    overlay.className = 'loading-overlay';
+                    overlay.innerHTML = '<div class="spinner"></div>';
+                    document.querySelector('.decision-card').appendChild(overlay);
+                }
+            } else {
+                if (loadingOverlay) {
+                    loadingOverlay.remove();
+                }
+            }
+            
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(btn => {
+                btn.disabled = show;
+                if (show && btn.classList.contains('btn-primary')) {
+                    btn.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; margin: 0 auto;"></div>';
+                } else if (!show && btn.classList.contains('btn-primary')) {
+                    btn.innerHTML = 'Analyze Readiness';
+                }
+            });
+        }
+        
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.classList.add('show'), 100);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 4000);
+        }
+        
+        function updateTimestamp() {
+            document.getElementById('lastUpdated').textContent = 
+                new Date().toLocaleTimeString('en-US', { 
+                    hour12: false, 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                }) + ' IST';
+        }
+        
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'r':
+                        e.preventDefault();
+                        runAnalysis();
+                        break;
+                    case '1':
+                        e.preventDefault();
+                        loadScenario('optimal');
+                        break;
+                    case '2':
+                        e.preventDefault();
+                        loadScenario('maintenance');
+                        break;
+                    case '3':
+                        e.preventDefault();
+                        loadScenario('average');
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        generateReport();
+                        break;
+                }
+            }
+        });
+        
+        window.addEventListener('error', function(e) {
+            console.error('Application error:', e.error);
+            showNotification('System error detected - check console for details', 'error');
+        });
+        
+        console.log('Kochi Metro Fleet Command Center Initialized');
+        console.log('Keyboard shortcuts: Ctrl+R (Analyze), Ctrl+1/2/3 (Scenarios), Ctrl+S (Report)');
+        console.log('Real-time fleet monitoring active');
+    </script>
+</body>
+</html>
